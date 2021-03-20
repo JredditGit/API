@@ -1,0 +1,73 @@
+package com.example.demo;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@SpringBootApplication
+public class DemoApplication {
+	private static String getAuthToken() {
+		RestTemplate restTemplate = new RestTemplate();
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBasicAuth("1ts5ibEaiPt1kQ", "W8_CMFGCWHG98wIxl45ZvmtEwM04xA");
+		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+		headers.put("User-Agent",
+				Collections.singletonList("tomcat:com.e4developer.e4reddit-test:v1.0 (by /u/bartoszjd)"));
+		String body = "grant_type=client_credentials";
+		HttpEntity<String> request = new HttpEntity<>(body, headers);
+		String authUrl = "https://www.reddit.com/api/v1/access_token";
+		ResponseEntity<String> response = restTemplate.postForEntity(authUrl, request, String.class);
+		ObjectMapper mapper = new ObjectMapper();
+		Map<String, Object> map = new HashMap<>();
+		try {
+			map.putAll(mapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {
+			}));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.out.println(response.getBody());
+		return String.valueOf(map.get("access_token"));
+	}
+
+	private static String readArticles(String subReddit) {
+		RestTemplate restTemplate = new RestTemplate();
+		HttpHeaders headers = new HttpHeaders();
+		String authToken = getAuthToken();
+		headers.setBearerAuth(authToken);
+		headers.put("User-Agent",
+				Collections.singletonList("tomcat:com.e4developer.e4reddit-test:v1.0 (by /u/bartoszjd)"));
+		HttpEntity<String> entity = new HttpEntity<String>("parameters", headers);
+		String url = "https://oauth.reddit.com/search/?q=" + subReddit;
+		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+		System.out.println(response.getBody());
+		return response.getBody();
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(DemoApplication.class, args);
+		String readArticlesData = readArticles("wallstreet");
+		Path path = Paths.get("C:\\Users\\ravi teja\\Desktop\\Lok\\Output\\result.txt");
+		try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+			writer.write(readArticlesData);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+}
